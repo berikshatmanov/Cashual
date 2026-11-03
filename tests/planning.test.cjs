@@ -38,3 +38,20 @@ test('backups reject invalid planning data instead of importing unsafe financial
   for(const bad of [{amount:-1},{nextDate:'2026-02-30'},{cycle:'daily'},{anchorDay:0},{account:'unknown'}])assert.throws(()=>P.validateExtension({...base,subscriptions:[sub(bad)]}));
   assert.throws(()=>P.validateExtension({goals:[{monthly:-1}]}));
 });
+test('catalog contains exactly 50 unique achievements with explicit conditions and bounded progress',()=>{
+  const a=P.achievements({goals:[],transactions:[],month:'2026-11',today:'2026-11-03'});
+  assert.equal(a.badges.length,50);assert.equal(new Set(a.badges.map(b=>b.id)).size,50);assert.equal(a.badges.filter(b=>b.earned).length,0);
+  assert.equal(new Set(a.badges.map(b=>b.group)).size,7);assert.ok(a.badges.every(b=>b.description&&b.title&&b.xp>0&&b.progress>=0&&b.progress<=1));
+});
+test('daily streak has one-day grace and daily XP cannot be duplicated by repeated claims',()=>{
+  assert.deepEqual(P.streakInfo(['2026-11-01','2026-11-02','2026-11-02'],'2026-11-03'),{current:2,longest:2,total:2});
+  assert.equal(P.streakInfo(['2026-11-01'],'2026-11-03').current,0);
+  const input={goals:[],transactions:[],month:'2026-11',today:'2026-11-03',play:{checkins:['2026-11-03'],claims:[{date:'2026-11-03',id:'forecast'}],visits:[{date:'2026-11-03',page:'forecast'}],goalEvents:[]}};
+  const a=P.achievements(input);assert.equal(a.habitXP,35);assert.equal(a.missions[0].claimed,true);assert.equal(a.missions[0].ready,true);
+  input.play.claims.push({date:'2026-11-03',id:'forecast'});assert.equal(P.achievements(input).habitXP,35);
+  assert.throws(()=>P.validateExtension({...input,goals:[]}));
+});
+test('quest rewards require today actions and earned list follows actual progress',()=>{
+  const a=P.achievements({goals:[{saved:10000,target:20000,monthly:500}],transactions:[],month:'2026-11',today:'2026-11-03',play:{checkins:[],claims:[],visits:[{date:'2026-11-02',page:'forecast'}],goalEvents:[{date:'2026-11-03',goalId:'g',amount:100}]}});
+  assert.equal(a.missions.find(m=>m.id==='save').ready,true);assert.equal(a.missions.find(m=>m.id==='forecast').ready,false);assert.equal(a.badges.find(b=>b.id==='first').earned,true);assert.equal(a.badges.find(b=>b.id==='steady').earned,false);
+});
