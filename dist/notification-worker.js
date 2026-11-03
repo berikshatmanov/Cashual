@@ -1,0 +1,3 @@
+self.addEventListener('notificationclick',event=>{event.notification.close();const fallback=new URL('./#review',self.registration.scope).href;let target=fallback;try{const requested=new URL(event.notification.data?.url||fallback);if(requested.origin===self.location.origin&&requested.pathname.startsWith(new URL(self.registration.scope).pathname))target=requested.href;}catch{}
+  event.waitUntil(self.clients.matchAll({type:'window',includeUncontrolled:true}).then(async clients=>{for(const client of clients)if(client.url.startsWith(self.registration.scope)){await client.navigate(target);return client.focus();}return self.clients.openWindow(target);}));
+});
