@@ -1,0 +1,9 @@
+work/
+outputs/
+node_modules/
+.env
+.env.*
+*.log
+*.tar.gz
+*.zip
+.DS_Store
